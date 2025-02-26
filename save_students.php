@@ -10,7 +10,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
-// Enable error reporting for debugging (disable in production)
+// Enable error reporting for debugging
 error_reporting(E_ALL);
 ini_set('display_errors', 1); // Enable during development
 ini_set('log_errors', 1); // Log errors to the server's error log
@@ -104,7 +104,7 @@ for ($i = 1; $i < count($data); $i++) {
 
     // Validate required fields
     if (empty($student_id) || empty($name) || empty($class) || empty($phno) || empty($division) || empty($rollno) || empty($email) ||
-        (!isset($rawRankStatus) || trim($rawRankStatus) === '')) {
+        ($rawRankStatus === null || $rawRankStatus === "")) {
         $allValid = false;
         $errorMessage = "Missing data at row " . ($i + 1);
         break;
@@ -117,14 +117,9 @@ for ($i = 1; $i < count($data); $i++) {
         break;
     }
 
-    // Validate student_id and rollno as integers
-    if (!ctype_digit($student_id) || !ctype_digit($rollno)) {
-        $allValid = false;
-        $errorMessage = "Invalid student_id or roll number at row " . ($i + 1);
-        break;
-    }
-
-    // Convert rank_status to string
+    // Convert data types and sanitize if needed
+    $student_id = intval($student_id);
+    $rollno = intval($rollno);
     $rank_status = strval($rawRankStatus);
 
     // Prepare the SQL query for insertion
