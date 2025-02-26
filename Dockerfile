@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install PHP extensions
-RUN docker-php-ext-install pgsql pdo_pgsql zip
+RUN docker-php-ext-install pdo pdo_pgsql zip
 
 # Fix Apache warning
 RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf
@@ -31,8 +31,8 @@ WORKDIR /var/www/html
 # Install Composer
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
-# Install Composer dependencies
-RUN composer install --no-dev --optimize-autoloader
+# Install Composer dependencies with verbose output
+RUN composer install --no-dev --optimize-autoloader -vvv
 
 # Copy the rest of the application files
 COPY . /var/www/html
