@@ -4,34 +4,40 @@ header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
 header("Content-Type: application/json");
 
+// Disable display_errors in production
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0); // Turn off error display
+ini_set('log_errors', 1); // Log errors to the server's error log
 
 // Include database configuration
 require 'db_config.php';
 
-require 'vendor/autoload.php'; // Ensure the path is correct
+// Include PhpSpreadsheet library
+require 'vendor/autoload.php';
 
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
-// Establish PostgreSQL connection using configuration variables
+// Function to send a JSON response
+function sendResponse($success, $error = "") {
+    echo json_encode(["success" => $success, "error" => $error]);
+    exit;
+}
+
+// Establish PostgreSQL connection
 $conn = pg_connect("host=$host port=$port dbname=$dbname user=$user password=$password");
 if (!$conn) {
-    echo json_encode(["success" => false, "error" => "Database connection failed"]);
-    exit;
+    sendResponse(false, "Database connection failed");
 }
 
 // Check if the file was uploaded successfully
 if (!isset($_FILES['excel_file']) || $_FILES['excel_file']['error'] != 0) {
-    echo json_encode(["success" => false, "error" => "Error uploading file"]);
-    exit;
+    sendResponse(false, "Error uploading file");
 }
 
 // Get competition ID from POST data
-$competition_id = isset($_POST['id']) ? intval($_POST['id']) : 0;
+$competition_id = isset($_POST['competition_id']) ? intval($_POST['competition_id']) : 0;
 if ($competition_id <= 0) {
-    echo json_encode(["success" => false, "error" => "Invalid competition ID"]);
-    exit;
+    sendResponse(false, "Invalid competition ID");
 }
 
 // Load the uploaded Excel file
@@ -39,8 +45,7 @@ $tmpFilePath = $_FILES['excel_file']['tmp_name'];
 try {
     $spreadsheet = IOFactory::load($tmpFilePath);
 } catch (Exception $e) {
-    echo json_encode(["success" => false, "error" => "Invalid Excel file: " . $e->getMessage()]);
-    exit;
+    sendResponse(false, "Invalid Excel file: " . $e->getMessage());
 }
 
 // Get the active sheet and convert it to an array
@@ -49,8 +54,7 @@ $data = $sheet->toArray();
 
 // Check if the file has at least one data row (excluding headers)
 if (count($data) < 2) {
-    echo json_encode(["success" => false, "error" => "No data found in file"]);
-    exit;
+    sendResponse(false, "No data found in file");
 }
 
 // Begin transaction for atomic insert
@@ -121,10 +125,10 @@ for ($i = 1; $i < count($data); $i++) {
 // Commit or rollback the transaction based on validation
 if ($allValid) {
     pg_query($conn, "COMMIT");
-    echo json_encode(["success" => true]);
+    sendResponse(true);
 } else {
     pg_query($conn, "ROLLBACK");
-    echo json_encode(["success" => false, "error" => $errorMessage]);
+    sendResponse(false, $errorMessage);
 }
 
 // Close the connection
