@@ -58,7 +58,7 @@ if (!$table_exists) {
 }
 
 // Base query: get students associated with a given competition
-$sql = "SELECT * FROM stdata WHERE competition_id = $1";
+$sql = "SELECT * FROM stdata WHERE id = $1";
 $params = [$compId];
 
 // Apply class filter if provided
