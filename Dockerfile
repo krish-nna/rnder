@@ -35,3 +35,4 @@ EXPOSE ${PORT}
 
 # Start Apache in the foreground
 CMD ["apache2-foreground"]
+apt-get update && apt-get install -y php-pgsql
