@@ -9,8 +9,12 @@ RUN apt-get update && apt-get install -y \
 # Fix Apache warning
 RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf
 
-# Enable Apache mod_rewrite (if needed for your project)
+# Enable Apache mod_rewrite (for clean URLs)
 RUN a2enmod rewrite
+
+# Set Apache to listen on Render's default PORT (10000)
+RUN sed -i "s/Listen 80/Listen ${PORT}/" /etc/apache2/ports.conf \
+    && sed -i "s/:80/:${PORT}/g" /etc/apache2/sites-available/000-default.conf
 
 # Copy project files into the container
 COPY . /var/www/html
@@ -18,15 +22,15 @@ COPY . /var/www/html
 # Set working directory
 WORKDIR /var/www/html
 
-# Set permissions
-RUN chown -R www-data:www-data /var/www/html
+# Ensure permissions for Apache
+RUN chown -R www-data:www-data /var/www/html \
+    && chmod -R 755 /var/www/html
 
-# Expose the correct port for Render (uses PORT 10000 by default)
-EXPOSE 10000
+# Set default index to api.php
+RUN echo "<?php require 'api.php'; ?>" > /var/www/html/index.php
 
-# Ensure Apache listens on the correct port
-RUN sed -i "s/Listen 80/Listen 10000/" /etc/apache2/ports.conf
-RUN sed -i "s/:80/:10000/g" /etc/apache2/sites-available/000-default.conf
+# Expose the correct port
+EXPOSE ${PORT}
 
 # Start Apache in the foreground
 CMD ["apache2-foreground"]
