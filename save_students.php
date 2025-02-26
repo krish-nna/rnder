@@ -1,35 +1,43 @@
 <?php
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type");
+
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// Include database configuration
 require 'db_config.php';
-
-require 'vendor/autoload.php'; // Ensure the path is correct
+require 'vendor/autoload.php';
 
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
-// Establish PostgreSQL connection using configuration variables
 $conn = pg_connect("host=$host port=$port dbname=$dbname user=$user password=$password");
 if (!$conn) {
     echo json_encode(["success" => false, "error" => "Database connection failed"]);
     exit;
 }
 
-// Check if the file was uploaded successfully
 if (!isset($_FILES['excel_file']) || $_FILES['excel_file']['error'] != 0) {
     echo json_encode(["success" => false, "error" => "Error uploading file"]);
     exit;
 }
 
-// Get competition ID from POST data
+// Check file type
+$fileType = mime_content_type($_FILES['excel_file']['tmp_name']);
+$allowedTypes = ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
+$fileExtension = pathinfo($_FILES['excel_file']['name'], PATHINFO_EXTENSION);
+
+if (!in_array($fileType, $allowedTypes) || strtolower($fileExtension) !== 'xlsx') {
+    echo json_encode(["success" => false, "error" => "Invalid file format. Please upload a valid .xlsx file"]);
+    exit;
+}
+
 $competition_id = isset($_POST['competition_id']) ? intval($_POST['competition_id']) : 0;
 if ($competition_id <= 0) {
     echo json_encode(["success" => false, "error" => "Invalid competition ID"]);
     exit;
 }
 
-// Load the uploaded Excel file
 $tmpFilePath = $_FILES['excel_file']['tmp_name'];
 try {
     $spreadsheet = IOFactory::load($tmpFilePath);
@@ -38,70 +46,57 @@ try {
     exit;
 }
 
-// Get the active sheet and convert it to an array
 $sheet = $spreadsheet->getActiveSheet();
 $data = $sheet->toArray();
 
-// Check if the file has at least one data row (excluding headers)
 if (count($data) < 2) {
     echo json_encode(["success" => false, "error" => "No data found in file"]);
     exit;
 }
 
-// Begin transaction for atomic insert
 pg_query($conn, "BEGIN");
 
 $allValid = true;
 $errorMessage = "";
 
-// Loop through rows (skip the header row)
 for ($i = 1; $i < count($data); $i++) {
-    $row = $data[$i];
+    $row = array_map('trim', $data[$i]); // Trim all fields
+    if (empty(array_filter($row))) continue; // Skip empty rows
 
-    // Skip empty rows
-    if (empty(array_filter($row))) {
-        continue;
-    }
-
-    // Validate row format (expecting 8 columns)
     if (count($row) < 8) {
         $allValid = false;
         $errorMessage = "Invalid row format at row " . ($i + 1) . ". Expected 8 columns.";
         break;
     }
 
-    // Extract data from the row; Excel columns in order:
-    // student_id, name, class, phno, division, rollno, email, rank_status
-    list($student_id, $name, $class, $phno, $division, $rollno, $email, $rawRankStatus) = $row;
+    list($student_id, $name, $class, $phno, $division, $rollno, $email, $rank_status) = $row;
 
-    // Validate required fields except rank_status.
-    // For rank_status, allow a value of 0. Check explicitly for null or empty string.
-    if (empty($student_id) || empty($name) || empty($class) || empty($phno) || empty($division) || empty($rollno) || empty($email) ||
-        ($rawRankStatus === null || $rawRankStatus === "")) {
+    if (empty($student_id) || empty($name) || empty($class) || empty($phno) || empty($division) || empty($rollno) || empty($email) || $rank_status === '') {
         $allValid = false;
         $errorMessage = "Missing data at row " . ($i + 1);
         break;
     }
 
-    // Validate phone number (must be exactly 10 digits)
     if (!preg_match('/^\d{10}$/', $phno)) {
         $allValid = false;
         $errorMessage = "Invalid phone number at row " . ($i + 1);
         break;
     }
 
-    // Convert data types and sanitize if needed
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $allValid = false;
+        $errorMessage = "Invalid email format at row " . ($i + 1);
+        break;
+    }
+
     $student_id = intval($student_id);
     $rollno = intval($rollno);
-    // Convert rank_status to string (as the enum expects string values)
-    $rank_status = strval($rawRankStatus);
+    $rank_status = strval($rank_status);
 
-    // Prepare the SQL query for insertion
     $query = "INSERT INTO stdata (student_id, name, class, phno, division, rollno, email, rank_status, id) 
               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)";
     $params = [$student_id, $name, $class, $phno, $division, $rollno, $email, $rank_status, $competition_id];
 
-    // Execute the query using prepared statements
     $result = pg_query_params($conn, $query, $params);
 
     if (!$result) {
@@ -111,7 +106,6 @@ for ($i = 1; $i < count($data); $i++) {
     }
 }
 
-// Commit or rollback the transaction based on validation
 if ($allValid) {
     pg_query($conn, "COMMIT");
     echo json_encode(["success" => true]);
@@ -120,6 +114,5 @@ if ($allValid) {
     echo json_encode(["success" => false, "error" => $errorMessage]);
 }
 
-// Close the connection
 pg_close($conn);
 ?>

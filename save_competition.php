@@ -1,5 +1,14 @@
-
 <?php
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type");
+
+// Handle preflight requests
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(204);
+    exit();
+}
+
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
@@ -22,6 +31,12 @@ if ($year < 1900 || $year > 2099) {
 }
 
 try {
+    // Connect to database
+    $conn = new PDO("pgsql:host=$host;port=$port;dbname=$dbname", $user, $password, [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+    ]);
+
     // Check if the competition already exists
     $stmt = $conn->prepare("SELECT COUNT(*) FROM competitions WHERE name = :name");
     $stmt->execute([":name" => $name]);
@@ -29,18 +44,19 @@ try {
         exit(json_encode(["error" => "Competition name already exists!"]));
     }
 
-    // Insert the new competition
-    $stmt = $conn->prepare("INSERT INTO competitions (name, category, college, year) VALUES (:name, :category, :college, :year)");
+    // Insert the new competition and return the inserted ID
+    $stmt = $conn->prepare("
+        INSERT INTO competitions (name, category, college, year) 
+        VALUES (:name, :category, :college, :year) 
+        RETURNING id
+    ");
     $stmt->execute([":name" => $name, ":category" => $category, ":college" => $college, ":year" => $year]);
     
-    // Retrieve the competition id from the database (PostgreSQL specific)
-    $competitionId = $conn->lastInsertId();
+    // Fetch the newly inserted ID
+    $competitionId = $stmt->fetchColumn();
 
     echo json_encode(["success" => "Competition added successfully", "competitionId" => $competitionId]);
 } catch (PDOException $e) {
     exit(json_encode(["error" => "Database error: " . $e->getMessage()]));
 }
 ?>
-
-
-
