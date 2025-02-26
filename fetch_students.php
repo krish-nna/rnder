@@ -1,7 +1,12 @@
 <?php
-hheader("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Origin: https://complogs.netlify.app"); // Only allow Netlify
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization");
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
 
 
 // Enable error reporting for debugging
@@ -34,7 +39,7 @@ if ($compId <= 0) {
 }
 
 // Base query: get students associated with a given competition (foreign key 'id')
-$sql = "SELECT * FROM stdata WHERE id = $1";
+$sql = "SELECT * FROM stdata WHERE competition_id = $1";
 $params = [$compId];
 
 // Apply class filter if provided (and not "all")
@@ -49,6 +54,10 @@ if (strtolower($filter_rank) === "top3") {
 }
 
 // Execute query with parameters
+
+error_log("SQL Query: " . $sql);
+error_log("Query Parameters: " . json_encode($params));
+
 $result = pg_query_params($conn, $sql, $params);
 
 if (!$result) {
