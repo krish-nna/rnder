@@ -4,9 +4,15 @@ header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
 header("Content-Type: application/json");
 
-// Disable display_errors in production
+// Handle preflight requests
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(204);
+    exit();
+}
+
+// Enable error reporting for debugging (disable in production)
 error_reporting(E_ALL);
-ini_set('display_errors', 0); // Turn off error display
+ini_set('display_errors', 1); // Enable during development
 ini_set('log_errors', 1); // Log errors to the server's error log
 
 // Include database configuration
@@ -26,12 +32,24 @@ function sendResponse($success, $error = "") {
 // Establish PostgreSQL connection
 $conn = pg_connect("host=$host port=$port dbname=$dbname user=$user password=$password");
 if (!$conn) {
-    sendResponse(false, "Database connection failed");
+    sendResponse(false, "Database connection failed: " . pg_last_error());
 }
 
 // Check if the file was uploaded successfully
 if (!isset($_FILES['excel_file']) || $_FILES['excel_file']['error'] != 0) {
-    sendResponse(false, "Error uploading file");
+    sendResponse(false, "Error uploading file: No file uploaded or upload error.");
+}
+
+// Validate file type (allow only .xlsx files)
+$allowedTypes = ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
+if (!in_array($_FILES['excel_file']['type'], $allowedTypes)) {
+    sendResponse(false, "Invalid file type. Only .xlsx files are allowed.");
+}
+
+// Validate file size (e.g., limit to 5MB)
+$maxFileSize = 5 * 1024 * 1024; // 5MB
+if ($_FILES['excel_file']['size'] > $maxFileSize) {
+    sendResponse(false, "File size exceeds the maximum limit of 5MB.");
 }
 
 // Get competition ID from POST data
@@ -58,7 +76,9 @@ if (count($data) < 2) {
 }
 
 // Begin transaction for atomic insert
-pg_query($conn, "BEGIN");
+if (!pg_query($conn, "BEGIN")) {
+    sendResponse(false, "Failed to start transaction: " . pg_last_error($conn));
+}
 
 $allValid = true;
 $errorMessage = "";
@@ -124,10 +144,14 @@ for ($i = 1; $i < count($data); $i++) {
 
 // Commit or rollback the transaction based on validation
 if ($allValid) {
-    pg_query($conn, "COMMIT");
+    if (!pg_query($conn, "COMMIT")) {
+        sendResponse(false, "Failed to commit transaction: " . pg_last_error($conn));
+    }
     sendResponse(true);
 } else {
-    pg_query($conn, "ROLLBACK");
+    if (!pg_query($conn, "ROLLBACK")) {
+        sendResponse(false, "Failed to rollback transaction: " . pg_last_error($conn));
+    }
     sendResponse(false, $errorMessage);
 }
 
