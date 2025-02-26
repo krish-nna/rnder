@@ -3,11 +3,11 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 // Get environment variables
-$host = getenv('PGHOST') ?: 'caboose.proxy.rlwy.net';
+$host = getenv('PGHOST') ?: 'metro.proxy.rlwy.net';
 $dbname = getenv('PGDATABASE') ?: 'railway';
 $user = getenv('PGUSER') ?: 'postgres';
-$password = getenv('PGPASSWORD') ?: 'jqWxlzLifuNdCNDKromVljtYCxmtMACk';
-$port = getenv('PGPORT') ?: '56625';
+$password = getenv('PGPASSWORD') ?: 'BSIoqAqteGwgiUvpCSepmCyNaiojnYFM';
+$port = getenv('PGPORT') ?: '12302';
 
 // Log the environment variables for debugging
 error_log("PGHOST: " . ($host ? $host : "NOT SET"));
