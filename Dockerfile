@@ -22,15 +22,20 @@ ENV APACHE_RUN_PORT=${PORT:-10000}
 RUN sed -i "s/^Listen .*/Listen ${APACHE_RUN_PORT}/" /etc/apache2/ports.conf \
     && sed -i "s/:80/:${APACHE_RUN_PORT}/g" /etc/apache2/sites-available/000-default.conf
 
-# Copy project files into the container
-COPY . /var/www/html
+# Copy composer.json and composer.lock into the container
+COPY composer.json composer.lock /var/www/html/
 
 # Set working directory
 WORKDIR /var/www/html
 
-# Install Composer dependencies
+# Install Composer
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
+# Install Composer dependencies
 RUN composer install --no-dev --optimize-autoloader
+
+# Copy the rest of the application files
+COPY . /var/www/html
 
 # Ensure permissions for Apache
 RUN chown -R www-data:www-data /var/www/html \
@@ -43,4 +48,4 @@ RUN echo "<?php require 'api.php'; ?>" > /var/www/html/index.php
 EXPOSE ${APACHE_RUN_PORT}
 
 # Start Apache in the foreground
-CMD ["apache2-foreground"] 8
+CMD ["apache2-foreground"]
