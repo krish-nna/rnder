@@ -28,7 +28,7 @@ if (!isset($_FILES['excel_file']) || $_FILES['excel_file']['error'] != 0) {
 }
 
 // Get competition ID from POST data
-$competition_id = isset($_POST['competition_id']) ? intval($_POST['competition_id']) : 0;
+$competition_id = isset($_POST['id']) ? intval($_POST['id']) : 0;
 if ($competition_id <= 0) {
     echo json_encode(["success" => false, "error" => "Invalid competition ID"]);
     exit;
