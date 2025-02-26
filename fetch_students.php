@@ -45,7 +45,7 @@ if (!empty($filter_class) && strtolower($filter_class) !== "all") {
 // Apply rank filter logic
 // When "top3" is selected, include only students whose rank_status is '1', '2', or '3'
 if (strtolower($filter_rank) === "top3") {
-    $sql .= " AND rank_status IN ('1', '2', '3')";
+    $sql .= " AND rank_status IN ('1', '2', '3')"; // Directly hardcoded since PostgreSQL doesn't support IN ($1, $2, $3)
 }
 
 // Execute query with parameters
