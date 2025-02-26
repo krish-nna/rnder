@@ -1,11 +1,16 @@
 # Use PHP with Apache as the base image
 FROM php:8.2-apache
 
-# Install system dependencies for PostgreSQL support
+# Install system dependencies for PostgreSQL and Zip support
 RUN apt-get update && apt-get install -y \
     libpq-dev \
-    && docker-php-ext-install pgsql pdo_pgsql
-    RUN docker-php-ext-install zip
+    libzip-dev \
+    unzip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install PHP extensions
+RUN docker-php-ext-install pgsql pdo_pgsql zip
+
 # Fix Apache warning
 RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf
 
@@ -23,6 +28,10 @@ COPY . /var/www/html
 # Set working directory
 WORKDIR /var/www/html
 
+# Install Composer dependencies
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+RUN composer install --no-dev --optimize-autoloader
+
 # Ensure permissions for Apache
 RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html
@@ -34,4 +43,4 @@ RUN echo "<?php require 'api.php'; ?>" > /var/www/html/index.php
 EXPOSE ${APACHE_RUN_PORT}
 
 # Start Apache in the foreground
-CMD ["apache2-foreground"]
+CMD ["apache2-foreground"] 8
