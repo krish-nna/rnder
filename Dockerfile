@@ -13,8 +13,9 @@ RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf
 RUN a2enmod rewrite
 
 # Set Apache to listen on Render's default PORT (10000)
-RUN sed -i "s/Listen 80/Listen ${PORT}/" /etc/apache2/ports.conf \
-    && sed -i "s/:80/:${PORT}/g" /etc/apache2/sites-available/000-default.conf
+# Ensure Apache listens on the correct port (use ENV variable if available)
+RUN sed -i "s/^Listen .*/Listen ${PORT:-10000}/" /etc/apache2/ports.conf \
+    && sed -i "s/:80/:${PORT:-10000}/g" /etc/apache2/sites-available/000-default.conf
 
 # Copy project files into the container
 COPY . /var/www/html
