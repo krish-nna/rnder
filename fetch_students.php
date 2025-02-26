@@ -26,12 +26,7 @@ $compId = isset($_GET['compId']) ? intval($_GET['compId']) : 0;
 $filter_class = isset($_GET['filter_class']) ? trim($_GET['filter_class']) : "";
 $filter_rank = isset($_GET['filter_rank']) ? trim($_GET['filter_rank']) : "";
 
-// Debug: Log received parameters
-error_log("Received compId: $compId");
-error_log("Received filter_class: $filter_class");
-error_log("Received filter_rank: $filter_rank");
-
-// Ensure competition ID is valid
+// Validate competition ID
 if ($compId <= 0) {
     echo json_encode(["success" => false, "error" => "Invalid competition ID"]);
     exit;
@@ -52,10 +47,6 @@ if (strtolower($filter_rank) === "top3") {
     $sql .= " AND rank_status IN ('1', '2', '3')";
 }
 
-// Debug: Log final query and parameters
-error_log("Final SQL Query: $sql");
-error_log("Query Parameters: " . json_encode($params));
-
 // Execute query with parameters
 $result = pg_query_params($conn, $sql, $params);
 
@@ -67,9 +58,6 @@ if (!$result) {
 
 // Fetch all rows as an associative array
 $students = pg_fetch_all($result);
-
-// Debug: Log fetched data
-error_log("Fetched Students: " . json_encode($students));
 
 // Handle empty result set
 if ($students === false) {
