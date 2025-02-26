@@ -1,11 +1,20 @@
 <?php
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Authorization");
+
+// Handle preflight requests
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(204);
+    exit();
+}
+
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 header('Content-Type: application/json'); // Ensure JSON response
 
 // Include database configuration
 require_once 'db_config.php';
-
 
 try {
     $conn = new PDO("pgsql:host=$host;port=$port;dbname=$dbname", $user, $password, [
