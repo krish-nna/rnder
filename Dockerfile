@@ -3,15 +3,14 @@ FROM php:8.2-apache
 
 # Install system dependencies for PostgreSQL, GD, and Zip support
 RUN apt-get update && apt-get install -y \
-    libpq-dev \
-    libzip-dev \
-    libpng-dev \
-    libjpeg-dev \
-    libfreetype6-dev \
-    unzip \
-    && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install pdo pdo_pgsql zip gd \
-    && rm -rf /var/lib/apt/lists/*
+    php-pgsql \
+    php-cli \
+    php-curl \
+    php-mbstring \
+    php-xml \
+    php-zip \
+    && docker-php-ext-install pgsql pdo_pgsql
+
 
 # Fix Apache warning
 RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf
