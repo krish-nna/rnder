@@ -1,16 +1,11 @@
 # Use PHP with Apache as the base image
 FROM php:8.2-apache
 
-# Install system dependencies for PostgreSQL, GD, and Zip support
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
-    php-pgsql \
-    php-cli \
-    php-curl \
-    php-mbstring \
-    php-xml \
-    php-zip \
-    && docker-php-ext-install pgsql pdo_pgsql
-
+    libpq-dev \
+    unzip \
+    && docker-php-ext-install pdo pdo_pgsql pgsql
 
 # Fix Apache warning
 RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf
@@ -19,11 +14,10 @@ RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf
 RUN a2enmod rewrite
 
 # Ensure Apache listens on Render's default PORT
-ENV APACHE_RUN_PORT=${PORT:-10000}
-RUN sed -i "s/^Listen .*/Listen ${APACHE_RUN_PORT}/" /etc/apache2/ports.conf \
-    && sed -i "s/:80/:${APACHE_RUN_PORT}/g" /etc/apache2/sites-available/000-default.conf
+ENV PORT 10000
+EXPOSE ${PORT}
 
-# Copy composer.json and composer.lock first (for caching)
+# Copy the Composer files first (for caching dependencies)
 COPY composer.json composer.lock /var/www/html/
 
 # Set working directory
@@ -32,11 +26,11 @@ WORKDIR /var/www/html
 # Install Composer
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
-# Install Composer dependencies with verbose output
-RUN composer install --no-dev --optimize-autoloader -vvv
-
-# Copy the rest of the application files
+# Copy all application files AFTER Composer installation
 COPY . /var/www/html
+
+# Install Composer dependencies
+RUN composer install --no-dev --optimize-autoloader
 
 # Ensure permissions for Apache
 RUN chown -R www-data:www-data /var/www/html \
@@ -44,9 +38,6 @@ RUN chown -R www-data:www-data /var/www/html \
 
 # Set default index to api.php
 RUN echo "<?php require 'api.php'; ?>" > /var/www/html/index.php
-
-# Expose the correct port (Render auto-sets $PORT)
-EXPOSE ${APACHE_RUN_PORT}
 
 # Start Apache in the foreground
 CMD ["apache2-foreground"]
