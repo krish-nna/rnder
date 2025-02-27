@@ -94,18 +94,18 @@ for ($i = 1; $i < count($data); $i++) {
     list($student_id, $name, $class, $phno, $division, $rollno, $email, $rank_status) = $row;
 
     if (!is_numeric($rollno)) {
-        error_log("Skipping row " . ($i + 1) . ": Invalid roll number.");
+        error_log("Skipping row " . ($i + 1) . ": Invalid roll number. Value: " . $rollno);
         continue;
     }
     $rollno = intval($rollno);
 
     if (empty($student_id) || empty($name) || empty($class) || empty($phno) || empty($division) || empty($email) || empty($rank_status)) {
-        error_log("Skipping row " . ($i + 1) . ": Missing data.");
+        error_log("Skipping row " . ($i + 1) . ": Missing data. Row data: " . implode(", ", $row));
         continue;
     }
 
     if (!preg_match('/^\d{10}$/', $phno)) {
-        error_log("Skipping row " . ($i + 1) . ": Invalid phone number.");
+        error_log("Skipping row " . ($i + 1) . ": Invalid phone number. Value: " . $phno);
         continue;
     }
 
@@ -115,6 +115,8 @@ for ($i = 1; $i < count($data); $i++) {
     if (!pg_query_params($conn, $query, $params)) {
         error_log("Database error at row " . ($i + 1) . ": " . pg_last_error($conn));
         continue;
+    } else {
+        error_log("Successfully inserted row " . ($i + 1));
     }
 }
 
