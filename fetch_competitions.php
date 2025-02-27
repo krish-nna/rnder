@@ -22,37 +22,40 @@ try {
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
     ]);
 
-    // Get filters from request
-    $compId = isset($_GET['compId']) ? (int) $_GET['compId'] : null;
-    $filter_class = isset($_GET['filter_class']) ? trim($_GET['filter_class']) : '';
-    $filter_rank = isset($_GET['filter_rank']) ? trim($_GET['filter_rank']) : '';
+  // Fetch competitions grouped by category, sorted by year within each category
+  $stmt = $conn->query("
+  SELECT category, json_agg(
+      json_build_object(
+          'id', id,
+          'name', name,
+          'college', college,
+          'year', year
+      ) ORDER BY year DESC
+  ) AS competitions
+  FROM competitions 
+  GROUP BY category
+  ORDER BY MAX(year) DESC, category ASC
+");
+$categories = $stmt->fetchAll();
 
-    if (!$compId) {
-        echo json_encode(["error" => "Missing competition ID"]);
-        exit();
-    }
+// Fetch distinct filter values
+$filters = $conn->query("
+  SELECT 
+      json_agg(DISTINCT year ORDER BY year DESC) AS years,
+      json_agg(DISTINCT category ORDER BY category ASC) AS categories,
+      json_agg(DISTINCT college ORDER BY college ASC) AS colleges
+  FROM competitions
+")->fetch();
 
-    // Build query dynamically
-    $query = "SELECT * FROM students WHERE competition_id = :compId";
-    $params = [':compId' => $compId];
-
-    if (!empty($filter_class)) {
-        $query .= " AND class = :filter_class";
-        $params[':filter_class'] = $filter_class;
-    }
-
-    if ($filter_rank === 'all') {
-        // No rank filtering needed
-    } elseif ($filter_rank === 'top3') {
-        $query .= " AND rank <= 3";
-    } else {
-        echo json_encode(["error" => "Invalid rank filter"]);
-        exit();
-    }
-
-    $stmt = $conn->prepare($query);
-    $stmt->execute($params);
-    $students = $stmt->fetchAll();
+// Prepare response
+$response = [
+  "categories" => $categories ?: [],
+  "filters" => [
+      "years" => $filters['years'] ?: [],
+      "categories" => $filters['categories'] ?: [],
+      "colleges" => $filters['colleges'] ?: []
+  ]
+];
 
     echo json_encode(["students" => $students], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
 } catch (PDOException $e) {
