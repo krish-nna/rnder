@@ -23,7 +23,8 @@ require 'db_config.php';
 // Include PhpSpreadsheet library
 require 'vendor/autoload.php';
 use PhpOffice\PhpSpreadsheet\IOFactory;
-
+error_log("Received competition_id: " . $_POST['competition_id']);
+error_log("File upload error: " . $_FILES['excel_file']['error']);
 // Function to send a JSON response
 function sendResponse($success, $error = "") {
     echo json_encode(["success" => $success, "error" => $error]);
