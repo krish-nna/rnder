@@ -1,10 +1,10 @@
 <?php
-// download_template.php
+// Allow cross-origin requests (CORS)
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
 
-// Enable error reporting (for development only)
+// Enable error reporting (for debugging only)
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
@@ -35,9 +35,10 @@ foreach (range('A', 'H') as $col) {
     $sheet->getStyle($col . '1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 }
 
-// Clean output buffer before sending file
-ob_clean();
-flush();
+// Ensure no output before headers
+if (ob_get_length()) {
+    ob_end_clean();
+}
 
 // Set headers for file download
 header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -49,4 +50,3 @@ header('Expires: 0');
 $writer = new Xlsx($spreadsheet);
 $writer->save('php://output');
 exit;
-?>
