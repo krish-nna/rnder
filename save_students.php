@@ -87,8 +87,8 @@ for ($i = 1; $i < count($data); $i++) {
     }
 
     if (count($row) < 8) {
-        pg_query($conn, "ROLLBACK");
-        sendResponse(false, "Invalid row format at row " . ($i + 1));
+        error_log("Skipping row " . ($i + 1) . ": Invalid row format. Expected 8 columns, found " . count($row));
+        continue;
     }
 
     list($student_id, $name, $class, $phno, $division, $rollno, $email, $rank_status) = $row;
