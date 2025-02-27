@@ -57,8 +57,5 @@ $response = [
   ]
 ];
 
-    echo json_encode(["students" => $students], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-} catch (PDOException $e) {
-    echo json_encode(["error" => "Database error: " . $e->getMessage()]);
-}
+}    
 ?>
