@@ -1,11 +1,10 @@
 # Use PHP with Apache as the base image
 FROM php:8.2-apache
 
-# Install system dependencies
+# Install system dependencies and PHP extensions
 RUN apt-get update && apt-get install -y \
-    libpq-dev \
-    unzip \
-    && docker-php-ext-install pdo pdo_pgsql pgsql
+    libpq-dev unzip \
+    && docker-php-ext-install pdo pdo_pgsql pgsql intl gd curl mbstring xml zip
 
 # Fix Apache warning
 RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf
@@ -13,11 +12,14 @@ RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf
 # Enable Apache mod_rewrite (for clean URLs)
 RUN a2enmod rewrite
 
+# Set memory limit to prevent Composer crashes
+RUN echo "memory_limit=512M" > /usr/local/etc/php/conf.d/memory.ini
+
 # Ensure Apache listens on Render's default PORT
 ENV PORT 10000
 EXPOSE ${PORT}
 
-# Copy the Composer files first (for caching dependencies)
+# Copy composer.json and composer.lock first (to cache dependencies)
 COPY composer.json composer.lock /var/www/html/
 
 # Set working directory
@@ -26,11 +28,17 @@ WORKDIR /var/www/html
 # Install Composer
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
-# Copy all application files AFTER Composer installation
-COPY . /var/www/html
+# Ensure permissions for Apache and Composer
+RUN chown -R www-data:www-data /var/www/html \
+    && chmod -R 755 /var/www/html
 
-# Install Composer dependencies
+# Install dependencies as the correct user
+USER www-data
 RUN composer install --no-dev --optimize-autoloader
+USER root
+
+# Copy the rest of the application files
+COPY . /var/www/html
 
 # Ensure permissions for Apache
 RUN chown -R www-data:www-data /var/www/html \
