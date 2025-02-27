@@ -92,6 +92,8 @@ for ($i = 1; $i < count($data); $i++) {
 
     if (empty($student_id) || empty($name) || empty($class) || empty($phno) || empty($division) || empty($rollno) || empty($email) || empty($rank_status)) {
         pg_query($conn, "ROLLBACK");
+                error_log("Processing row " . ($i + 1) . ": " . implode(", ", $row));
+
         sendResponse(false, "Missing data at row " . ($i + 1));
     }
 
