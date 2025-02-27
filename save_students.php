@@ -64,7 +64,7 @@ error_log("File size validation successful.");
 
 // Get competition ID from POST data
 $competition_id = isset($_POST['competition_id']) ? intval($_POST['competition_id']) : 0;
-if ($competition_id <= 0) {
+if ($competition_id == 0) {
     error_log("Invalid competition ID.");
     sendResponse(false, "Invalid competition ID");
 }
