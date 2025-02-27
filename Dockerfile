@@ -30,6 +30,13 @@ RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local
 
 # Copy the rest of the application files
 COPY . /var/www/html
+# Install required PHP extensions
+RUN apt-get update && apt-get install -y libpng-dev libjpeg-dev libfreetype6-dev \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install gd
+
+# Install Composer dependencies
+RUN composer install --no-dev --optimize-autoloader -vvv
 
 # Install Composer dependencies with verbose output (after all files are copied)
 RUN composer install --no-dev --optimize-autoloader -vvv
