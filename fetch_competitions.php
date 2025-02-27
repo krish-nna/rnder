@@ -3,7 +3,7 @@ header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization");
 
-// Handle preflight requests
+// Handle preflight request
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
     exit();
@@ -11,7 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
-header('Content-Type: application/json'); // Ensure JSON response
+header('Content-Type: application/json');
 
 // Include database configuration
 require_once 'db_config.php';
@@ -22,43 +22,40 @@ try {
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
     ]);
 
-    // Fetch competitions grouped by category, sorted by year within each category
-    $stmt = $conn->query("
-        SELECT category, json_agg(
-            json_build_object(
-                'id', id,
-                'name', name,
-                'college', college,
-                'year', year
-            ) ORDER BY year DESC
-        ) AS competitions
-        FROM competitions 
-        GROUP BY category
-        ORDER BY MAX(year) DESC, category ASC
-    ");
-    $categories = $stmt->fetchAll();
+    // Get filters from request
+    $compId = isset($_GET['compId']) ? (int) $_GET['compId'] : null;
+    $filter_class = isset($_GET['filter_class']) ? trim($_GET['filter_class']) : '';
+    $filter_rank = isset($_GET['filter_rank']) ? trim($_GET['filter_rank']) : '';
 
-    // Fetch distinct filter values
-    $filters = $conn->query("
-        SELECT 
-            json_agg(DISTINCT year ORDER BY year DESC) AS years,
-            json_agg(DISTINCT category ORDER BY category ASC) AS categories,
-            json_agg(DISTINCT college ORDER BY college ASC) AS colleges
-        FROM competitions
-    ")->fetch();
+    if (!$compId) {
+        echo json_encode(["error" => "Missing competition ID"]);
+        exit();
+    }
 
-    // Prepare response
-    $response = [
-        "categories" => $categories ?: [],
-        "filters" => [
-            "years" => $filters['years'] ?: [],
-            "categories" => $filters['categories'] ?: [],
-            "colleges" => $filters['colleges'] ?: []
-        ]
-    ];
+    // Build query dynamically
+    $query = "SELECT * FROM students WHERE competition_id = :compId";
+    $params = [':compId' => $compId];
 
-    echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    if (!empty($filter_class)) {
+        $query .= " AND class = :filter_class";
+        $params[':filter_class'] = $filter_class;
+    }
+
+    if ($filter_rank === 'all') {
+        // No rank filtering needed
+    } elseif ($filter_rank === 'top3') {
+        $query .= " AND rank <= 3";
+    } else {
+        echo json_encode(["error" => "Invalid rank filter"]);
+        exit();
+    }
+
+    $stmt = $conn->prepare($query);
+    $stmt->execute($params);
+    $students = $stmt->fetchAll();
+
+    echo json_encode(["students" => $students], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
 } catch (PDOException $e) {
-    echo json_encode(["error" => "Database fetch error: " . $e->getMessage()]);
+    echo json_encode(["error" => "Database error: " . $e->getMessage()]);
 }
 ?>
