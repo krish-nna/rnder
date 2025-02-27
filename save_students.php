@@ -1,14 +1,17 @@
 <?php
-header("Access-Control-Allow-Origin: *");
+<?php
+header("Access-Control-Allow-Origin: https://complogs.netlify.app"); // Allow only your frontend
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type");
-header("Content-Type: application/json");
+header("Access-Control-Allow-Headers: Content-Type, Authorization");
+header("Access-Control-Allow-Credentials: true");
 
-// Handle preflight requests
+// Handle preflight request
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
+    http_response_code(200);
     exit();
 }
+?>
+
 
 // Enable error reporting for debugging (disable in production)
 error_reporting(E_ALL);
